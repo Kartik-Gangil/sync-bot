@@ -1,0 +1,16 @@
+{
+    "source": {
+        "owner": "your-username",
+        "repo": "source-repo"
+    },
+    "target": {
+        "owner": "your-username",
+        "repo": "target-repo"
+    },
+    "mappings": [
+        {
+            "source": "index.js",
+            "target": "index.js"
+        }
+    ]
+}
