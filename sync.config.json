@@ -9,8 +9,8 @@
     },
     "mappings": [
         {
-            "source": "index.js",
-            "target": "index.js"
+            "source": "Readme.md",
+            "target": "page.jsx"
         }
     ]
 }

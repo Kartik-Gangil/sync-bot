@@ -5,13 +5,20 @@ import {
     createPullRequest
 } from "./github.js";
 import simpleGit from "simple-git";
-import { updateTargetFile } from "./file-sync.js";
+import {
+    deleteTargetFile,
+    loadSyncConfig,
+    updateTargetFile
+} from "./file-sync.js";
 import path from "path"
 import fs from "fs/promises"
 import { cloneTargetRepository } from './git.js';
 import dotenv from "dotenv";
+import { main } from "./agent.js";
 
 dotenv.config();
+
+const config = loadSyncConfig();
 
 export async function syncRepository(commitSha) {
     console.log(
@@ -48,7 +55,8 @@ export async function syncRepository(commitSha) {
         await processFile(
             file,
             targetPath,
-            commitSha
+            commitSha,
+            config
         );
     }
 
@@ -144,25 +152,15 @@ export async function syncRepository(commitSha) {
 async function processFile(
     file,
     targetPath,
-    commitSha
+    commitSha,
+    config
 ) {
     // 1. Deleted file
     if (file.status === "removed") {
-        const targetFilePath =
-            path.join(
-                targetPath,
-                file.filename
-            );
-
-        await fs.rm(
-            targetFilePath,
-            {
-                force: true
-            }
-        );
-
-        console.log(
-            `Deleted target file: ${file.filename}`
+        await deleteTargetFile(
+            targetPath,
+            file.filename,
+            config
         );
 
         return;
@@ -187,10 +185,68 @@ async function processFile(
             commitSha
         );
 
+    const targetFile = getTargetFile(
+        file.filename,
+        config
+    );
+
+
+    if (!targetFile) {
+        console.log(
+            `No target mapping found for ${file.filename}`
+        );
+        return;
+    }
+    // ye code block target file path construct kr rha hai
+    const targetFilePath = path.join(
+        targetPath,
+        targetFile
+    );
+    // ye code block target file ka content gather kr rha hai
+    const targetContent = await fs.readFile(
+        targetFilePath,
+        "utf-8"
+    );
+
+    // now i have source contant and target content
+
+    const mergedContent = await syncMarkdownToJSX(
+        sourceContent,
+        targetContent
+    );
+
+    // await fs.writeFile(
+    //     targetFilePath,
+    //     updatedContent,
+    //     "utf-8"
+    // );
+
     // 4. Update target repository
     await updateTargetFile(
         targetPath,
         file.filename,
-        sourceContent
+        mergedContent,
+        config
     );
+}
+
+export async function syncMarkdownToJSX(sourceContent, targetContent) {
+    try {
+        const targetData = await main(sourceContent, targetContent);
+        return targetData;
+    } catch (error) {
+        return console.log(error)
+    }
+}
+
+export function getTargetFile(sourceFile, config) {
+    const mapping = config.mappings.find(
+        (item) => item.source === sourceFile
+    );
+
+    if (!mapping) {
+        return null;
+    }
+
+    return mapping.target;
 }
