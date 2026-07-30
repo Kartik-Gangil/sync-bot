@@ -9,7 +9,7 @@
     },
     "mappings": [
         {
-            "source": "Readme.md",
+            "source": "README.md",
             "target": "page.jsx"
         }
     ]
